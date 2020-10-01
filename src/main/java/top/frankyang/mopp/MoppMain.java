@@ -1,4 +1,4 @@
-package net.fabricmc.example;
+package top.frankyang.mopp;
 
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.api.ModInitializer;
@@ -16,7 +16,7 @@ import static com.mojang.brigadier.arguments.StringArgumentType.getString;
 import static com.mojang.brigadier.arguments.StringArgumentType.string;
 
 
-public class ExampleMod implements ModInitializer {
+public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 1;
     private static final int REVISION = 1;
