@@ -12,14 +12,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
 
-import static com.mojang.brigadier.arguments.StringArgumentType.getString;
-import static com.mojang.brigadier.arguments.StringArgumentType.string;
+import static com.mojang.brigadier.arguments.StringArgumentType.*;
 
 
 public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 1;
-    private static final int REVISION = 1;
+    private static final int REVISION = 3;
 
     private Sequencer sequencer;
     private MidiDevice midiDevice;
@@ -34,9 +33,22 @@ public class MoppMain implements ModInitializer {
         return null;
     }
 
-    private void sendMidiMessage(String bytesString) {
+    private void sendRawMidiMessage(String bytesString) {
         byte[] data = Base64.getDecoder().decode(bytesString);
         midiReceiver.send(new LooseMessage(data), -1);
+    }
+
+    private short mapShortMessageStat(String data) {
+        try {
+            return Short.parseShort(data);
+        } catch (NumberFormatException e) {
+            Class klass = ShortMessage.class;
+            try {
+                return (short) klass.getField(data).getInt(new ShortMessage());
+            } catch (NoSuchFieldException | IllegalAccessException ignored) {
+                throw new IllegalArgumentException();  // Neither a number nor parsed
+            }
+        }
     }
 
     @Override
@@ -50,6 +62,8 @@ public class MoppMain implements ModInitializer {
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(this::deviceReset))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("panic").executes(this::devicePanic))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("write").then(CommandManager.argument("bytes", string()).executes(this::deviceWrite)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend)))));
         });
     }
 
@@ -225,12 +239,123 @@ public class MoppMain implements ModInitializer {
             return 1;
         }
 
-        sendMidiMessage(bytesString);
+        sendRawMidiMessage(bytesString);
 
         context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
         return 1;
     }
 
+    private String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
+        String dataString = getString(context, "data");
+
+        if (midiDevice == null || midiReceiver == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法发送。"), false);
+            throw new IllegalArgumentException();
+        }
+        if (dataString.isEmpty()) {
+            context.getSource().sendFeedback(new LiteralText("§c消息不可为空。"), false);
+            throw new IllegalArgumentException();
+        }
+
+        return dataString.split("\\s+");
+    }
+
+    private int deviceShortSend(CommandContext<ServerCommandSource> context) {
+        String[] data;
+        try {
+            data = devicePreSendProc(context);
+        } catch (IllegalArgumentException e) {
+            return 1;
+        }
+
+        if (data.length == 0) {
+            context.getSource().sendFeedback(new LiteralText("§c一般消息至少接受一个参数。"), false);
+            return 1;
+        }
+        if (data.length > 4) {
+            context.getSource().sendFeedback(new LiteralText("§c一般消息至多接受四个参数。"), false);
+            return 1;
+        }
+        if (data.length == 1) {
+            try {
+                short a = mapShortMessageStat(data[0]);
+                midiReceiver.send(new ShortMessage(a), -1);
+            } catch (IllegalArgumentException | InvalidMidiDataException e) {
+                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                return 1;
+            }
+        } else if (data.length == 2) {
+            context.getSource().sendFeedback(new LiteralText("§c一般消息不可接受两个参数。"), false);
+            return 1;
+        } else if (data.length == 3) {
+            try {
+                short a = mapShortMessageStat(data[0]);
+                short b = Short.parseShort(data[1]);
+                short c = Short.parseShort(data[2]);
+                midiReceiver.send(new ShortMessage(a, b, c), -1);
+            } catch (IllegalArgumentException | InvalidMidiDataException e) {
+                e.printStackTrace();
+                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                return 1;
+            }
+        } else {
+            try {
+                short a = mapShortMessageStat(data[0]);
+                short b = Short.parseShort(data[1]);
+                short c = Short.parseShort(data[2]);
+                short d = Short.parseShort(data[3]);
+                midiReceiver.send(new ShortMessage(a, b, c, d), -1);
+            } catch (IllegalArgumentException | InvalidMidiDataException e) {
+                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                return 1;
+            }
+        }
+
+        context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
+        return 1;
+    }
+
+    private int deviceSysExSend(CommandContext<ServerCommandSource> context) {
+        String[] data;
+        try {
+            data = devicePreSendProc(context);
+        } catch (IllegalArgumentException e) {
+            return 1;
+        }
+
+        if (data.length < 2) {
+            context.getSource().sendFeedback(new LiteralText("§c系统消息至少接受两个参数。"), false);
+            return 1;
+        }
+        if (data.length > 3) {
+            context.getSource().sendFeedback(new LiteralText("§c系统消息至多接受三个参数。"), false);
+            return 1;
+        }
+
+        if (data.length == 2) {
+            try {
+                byte[] a = Base64.getDecoder().decode(data[0]);
+                short b = Short.parseShort(data[1]);
+                midiReceiver.send(new SysexMessage(a, b), -1);
+            } catch (IllegalArgumentException | InvalidMidiDataException e) {
+                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                return 1;
+            }
+        } else {
+            try {
+                short a = Short.parseShort(data[0]);
+                byte[] b = Base64.getDecoder().decode(data[1]);
+                short c = Short.parseShort(data[2]);
+                midiReceiver.send(new SysexMessage(a, b, c), -1);
+            } catch (IllegalArgumentException | InvalidMidiDataException e) {
+                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                return 1;
+            }
+        }
+
+        context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
+        return 1;
+    }
 
     private static class LooseMessage extends ShortMessage {
         public LooseMessage(byte[] data) {

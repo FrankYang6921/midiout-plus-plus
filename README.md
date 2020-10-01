@@ -37,12 +37,21 @@ These commands below are useful when you want to use the mod yourself. However, 
 + Panic the selected MIDI device: `/mopp device panic`
 + Write a raw MIDI message: `/mopp device send <bytes>`
     + Notice: these bytes should be sent in base64 form.
++ Send a short MIDI message:
+    + `/mopp device short <status>`
+    + `/mopp device short <status> <data1> <data2>`
+    + `/mopp device short <status> <channel> <data1> <data2>`
+    + Notice: 'status' can be either in integer or in string.
++ Send a SysEx MIDI message: 
+    + `/mopp device sysex <data> <length>`
+    + `/mopp device sysex <status> <data> <length>`
 
 You can also try these 3 commands to test your installation:
 ```
 /mopp device set "Microsoft GS Wavetable Synth"
-/mopp device write "kDx/"
-/mopp device write "gDxA"
+/mopp device write "kDx/" (or /mopp device NOTE_ON 144 60 127)
+/mopp device short NOTE_ON 60 127
+/mopp device write "gDxA" (or /mopp device NOTE_OFF 128 60 127)
 ```
 After typing the first 2 commands, you should hear a middle C note, and after typing the last command, the note should be stopped.
 
