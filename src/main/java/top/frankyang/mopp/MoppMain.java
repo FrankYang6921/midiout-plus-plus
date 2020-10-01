@@ -49,7 +49,7 @@ public class MoppMain implements ModInitializer {
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("set").then(CommandManager.argument("name", string()).executes(this::deviceSet)))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(this::deviceReset))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("panic").executes(this::devicePanic))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.argument("bytes", string()).executes(this::deviceSend)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("write").then(CommandManager.argument("bytes", string()).executes(this::deviceWrite)))));
         });
     }
 
@@ -100,9 +100,11 @@ public class MoppMain implements ModInitializer {
                 ) +
                         "§e§l集气瓶的FAQ：§r\n" +
                         "§eQ1§r：“遵循GPLv3协议的自由软件”是什么意思？\n" +
-                        "§eA1§r：这意味着你有自由按自己的意愿使用软件，有自由按自己的需要修改软件，有自由把软件分享给友邻，以及有自由分享自己对软件的修改。简而言之，你可以用它做任何事，只须遵守§oGPLv3§r的条款。\n\n" +
+                        "§eA1§r：这意味着你有自由按自己的意愿使用软件，有自由按自己的需要修改软件，有自由把软件分享给友邻，以及有自由分享自己对软件的修改。简而言之，你可以用它做任何事，只须遵守§oGPLv3§r的条款。\n" +
                         "§eQ2§r：我使用本软件制作的作品属于红石音乐吗？\n" +
-                        "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。"
+                        "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。" +
+                        "§eQ2§r：我可以在哪里找到使用本软件的帮助？\n" +
+                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。"
         ), false);
 
         return 1;
@@ -211,7 +213,7 @@ public class MoppMain implements ModInitializer {
     }
 
 
-    private int deviceSend(CommandContext<ServerCommandSource> context) {
+    private int deviceWrite(CommandContext<ServerCommandSource> context) {
         String bytesString = getString(context, "bytes");
 
         if (midiDevice == null || midiReceiver == null) {

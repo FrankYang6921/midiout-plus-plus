@@ -35,8 +35,16 @@ These commands below are useful when you want to use the mod yourself. However, 
 + Select a MIDI device: `/mopp device set <name>`
 + Reset the selected MIDI device: `/mopp device reset`
 + Panic the selected MIDI device: `/mopp device panic`
-+ Send a MIDI message: `/mopp device send <bytes>`
++ Write a raw MIDI message: `/mopp device send <bytes>`
     + Notice: these bytes should be sent in base64 form.
+
+You can also try these 3 commands to test your installation:
+```
+/mopp device set "Microsoft GS Wavetable Synth"
+/mopp device write "kDx/"
+/mopp device write "gDxA"
+```
+After typing the first 2 commands, you should hear a middle C note, and after typing the last command, the note should be stopped.
 
 ## License
 

@@ -3,8 +3,8 @@
   "id": "mopp",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "MIDIOut++",
+  "description": "The legit MIDIOut mod for Minecraft 1.16.x.",
   "authors": [
     "kworker"
   ],
