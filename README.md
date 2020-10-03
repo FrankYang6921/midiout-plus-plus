@@ -1,5 +1,4 @@
 # MIDIOut++;
-
 ```java
 public class WhatIsThisThingLike {
     public var MOPP = new MidiOutPlusPlus();
@@ -14,7 +13,6 @@ public class WhatIsThisThingLike {
 ```
 
 ## Getting Started
-
 To run this mod, you need:
 + Minecraft 1.16 or newer with...
   + Fabric Loader \+ Fabric API
@@ -22,7 +20,6 @@ To run this mod, you need:
 This mod meant to replace the original MIDIOut, and it requires MIDI devices or SoundFont™ banks. Only Windows is supported.
 
 ## Releases
-
 Use the link here to redirect to the [releases](https://github.com/FrankYang6921/midiout-/releases) page.
 
 ## HOWTO
@@ -54,8 +51,48 @@ You can also try these 3 commands to test your installation:
 /mopp device send raw "kDx/" (or /mopp device send short NOTE_ON 0 60 127)
 /mopp device send raw "gDxA" (or /mopp device send short NOTE_OFF 0 60 127)
 ```
-After typing the first 2 commands, you should hear a middle C note, and after typing the last command, the note should be stopped.
+After typing in the first 2 commands, you should hear a middle C note, and after typing in the last command, the note should be stopped.
+
+For more details, read [Details](#Details).
+
+## Details
+Notice: I won't repeat the basic concepts in [HOWTO](#HOWTO).
+
+### What can the 'player' sub-command do?
+It is the easiest way to playback a single MIDI file in accurate tempo with the internal SoundFont™ loader. It can help you test your installation and give you a brief impression of the performance of that MIDI file in Minecraft.
+
+### Some special MIDI devices...
+When you type in `/mopp device list`, you may see a list of MIDI devices. Here's a quick guide for you to pick these MIDI devices. If you'd like to use the internal SoundFont™ loader(not implemented yet), then you have to choose 'Gervill' by OpenJDK. You should never choose 'Real Time Sequencer' as it's not a proper device to send MIDI messages. In addition, you should never choose 'Microsoft GS Wavetable Synth' either when you have another MIDI device for its poor sound quality.
+
+### The difference between 'panic' and 'reset'...
+'Panic' turns off all the notes, in comparison, 'reset' not only turns off all the notes, but also resets all the instruments to 0.
+
+### The string shortcuts you can use...
+For `/mopp device send short <status> ...` and `/mopp device send sysex <status> <data> <length>`, you can use string shortcuts for the '\<status\>' instead of an integer.
+
+For short messages:
++ MIDI_TIME_CODE = 0xF1
++ SONG_POSITION_POINTER = 0xF2
++ SONG_SELECT = 0xF3
++ TUNE_REQUEST = 0xF6
++ END_OF_EXCLUSIVE = 0xF7
++ TIMING_CLOCK = 0xF8
++ START = 0xFA
++ CONTINUE = 0xFB
++ STOP = 0xFC
++ ACTIVE_SENSING = 0xFE
++ SYSTEM_RESET = 0xFF
++ **NOTE_OFF = 0x80**
++ **NOTE_ON = 0x90**
++ POLY_PRESSURE = 0xA0
++ **CONTROL_CHANGE = 0xB0**
++ **PROGRAM_CHANGE = 0xC0**
++ CHANNEL_PRESSURE = 0xD0
++ PITCH_BEND = 0xE0
+
+For sysex messages:
++ SYSTEM_EXCLUSIVE = 0xF0
++ SPECIAL_SYSTEM_EXCLUSIVE = 0xF7
 
 ## License
-
 MIDIOut++ is a free software by kworker(FrankYang6921) under GPLv3 license. There is no warranty for the program.
