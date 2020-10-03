@@ -42,7 +42,7 @@ public class MoppMain implements ModInitializer {
         try {
             return Short.parseShort(data);
         } catch (NumberFormatException e) {
-            Class klass = ShortMessage.class;
+            Class<ShortMessage> klass = ShortMessage.class;
             try {
                 return (short) klass.getField(data).getInt(new ShortMessage());
             } catch (NoSuchFieldException | IllegalAccessException ignored) {
@@ -51,20 +51,53 @@ public class MoppMain implements ModInitializer {
         }
     }
 
+    private short mapSysExMessageStat(String data) {
+        try {
+            return Short.parseShort(data);
+        } catch (NumberFormatException e) {
+            Class<SysexMessage> klass = SysexMessage.class;
+            try {
+                return (short) klass.getField(data).getInt(new SysexMessage());
+            } catch (NoSuchFieldException | IllegalAccessException ignored) {
+                throw new IllegalArgumentException();  // Neither a number nor parsed
+            }
+        }
+    }
+
+    private String showMidiDeviceInfo(MidiDevice.Info info) {
+        return String.format("§eMIDI设备：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription());
+    }
+
     @Override
     public void onInitialize() {
         CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("about").executes(this::about)));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("play").then(CommandManager.argument("path", string()).executes(this::playerPlay)))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("stop").executes(this::playerStop))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("get").executes(this::deviceGet))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("set").then(CommandManager.argument("name", string()).executes(this::deviceSet)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(this::deviceReset))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("list").executes(this::deviceList))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("panic").executes(this::devicePanic))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("write").then(CommandManager.argument("bytes", string()).executes(this::deviceWrite)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(this::deviceReset))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("select").then(CommandManager.argument("name", string()).executes(this::deviceSelect)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("raw").then(CommandManager.argument("bytes", string()).executes(this::deviceRawSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("show").executes(this::deviceShow))));
         });
+    }
+
+    private String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
+        String dataString = getString(context, "data");
+
+        if (midiDevice == null || midiReceiver == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法发送。"), false);
+            throw new IllegalArgumentException();
+        }
+        if (dataString.isEmpty()) {
+            context.getSource().sendFeedback(new LiteralText("§c消息不可为空。"), false);
+            throw new IllegalArgumentException();
+        }
+
+        return dataString.split("\\s+");
     }
 
     private int playerPlay(CommandContext<ServerCommandSource> context) {
@@ -118,91 +151,21 @@ public class MoppMain implements ModInitializer {
                         "§eQ2§r：我使用本软件制作的作品属于红石音乐吗？\n" +
                         "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。" +
                         "§eQ2§r：我可以在哪里找到使用本软件的帮助？\n" +
-                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。"
+                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。你也可以"
         ), false);
 
         return 1;
     }
 
-    private int deviceGet(CommandContext<ServerCommandSource> context) {
+    private int deviceList(CommandContext<ServerCommandSource> context) {
         MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
         StringBuilder feedback = new StringBuilder();
-        for (int i = 0; i < info.length; i++) {
-            MidiDevice.Info piece = info[i];
-            feedback.append(
-                    String.format("§eMIDI设备[%d]：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", i, piece.getName(), piece.getVendor(), piece.getDescription())
-            );
+
+        for (MidiDevice.Info piece : info) {
+            feedback.append(showMidiDeviceInfo(piece));
         }
         context.getSource().sendFeedback(new LiteralText(feedback.toString().trim()), false);
 
-        return 1;
-    }
-
-
-    private int deviceSet(CommandContext<ServerCommandSource> context) {
-        String deviceName = getString(context, "name");
-        MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
-
-        if (midiReceiver != null) {
-            midiReceiver.close();
-        }
-        if (midiDevice != null) {
-            midiDevice.close();
-        }
-
-        midiDevice = null;
-        midiReceiver = null;
-        for (MidiDevice.Info piece : info) {
-            if (!deviceName.equals(piece.getName())) {
-                continue;  // Ignores other MIDI devices.
-            }
-            midiDevice = tryGetMidiDevice(piece);
-        }
-
-        if (midiDevice == null) {
-            if (info.length == 0) {
-                context.getSource().sendFeedback(new LiteralText("§cMIDI设备选择失败。没有有效的MIDI设备。"), false);
-                return 1;
-            } else {
-                deviceName = info[0].getName();  // Default
-                midiDevice = tryGetMidiDevice(info[0]);
-                context.getSource().sendFeedback(new LiteralText(String.format("§cMIDI设备选择失败。现在已选择“%s”", deviceName)), false);
-            }
-        } else {
-            context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", deviceName)), false);
-        }
-
-        try {
-            midiDevice.open();
-            midiReceiver = midiDevice.getReceiver();
-        } catch (MidiUnavailableException e) {
-            context.getSource().sendFeedback(new LiteralText("§cMIDI设备初始化失败。没有有效的MIDI设备。"), false);
-            return 1;
-        }
-        context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", deviceName)), false);
-
-        return 1;
-    }
-
-
-    private int deviceReset(CommandContext<ServerCommandSource> context) {
-        if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法重置。"), false);
-            return 1;
-        }
-
-        try {
-            for (int i = 0; i < 16; i++) {
-                for (int j = 0; j < 128; j++) {
-                    midiReceiver.send(new ShortMessage(ShortMessage.NOTE_OFF, i, j, 0), -1);
-                }
-                midiReceiver.send(new ShortMessage(ShortMessage.PROGRAM_CHANGE, i, 0, 0), -1);
-            }
-        } catch (InvalidMidiDataException e) {
-            throw new RuntimeException(e);
-        }
-
-        context.getSource().sendFeedback(new LiteralText("重置了MIDI设备。"), false);
         return 1;
     }
 
@@ -226,8 +189,81 @@ public class MoppMain implements ModInitializer {
         return 1;
     }
 
+    private int deviceReset(CommandContext<ServerCommandSource> context) {
+        if (midiDevice == null || midiReceiver == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法重置。"), false);
+            return 1;
+        }
 
-    private int deviceWrite(CommandContext<ServerCommandSource> context) {
+        try {
+            for (int i = 0; i < 16; i++) {
+                for (int j = 0; j < 128; j++) {
+                    midiReceiver.send(new ShortMessage(ShortMessage.NOTE_OFF, i, j, 0), -1);
+                }
+                midiReceiver.send(new ShortMessage(ShortMessage.PROGRAM_CHANGE, i, 0, 0), -1);
+            }
+        } catch (InvalidMidiDataException e) {
+            throw new RuntimeException(e);
+        }
+
+        context.getSource().sendFeedback(new LiteralText("重置了MIDI设备。"), false);
+        return 1;
+    }
+
+    private int deviceSelect(CommandContext<ServerCommandSource> context) {
+        String deviceName = getString(context, "name");
+        MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
+
+        if (midiReceiver != null) {
+            midiReceiver.close();
+        }
+        if (midiDevice != null) {
+            midiDevice.close();
+        }
+
+        midiDevice = null;
+        midiReceiver = null;
+        for (MidiDevice.Info piece : info) {
+            if (!(deviceName.equals(".") || deviceName.equals(piece.getName()))) {
+                continue;  // Ignores other MIDI devices.
+            }
+            midiDevice = tryGetMidiDevice(piece);
+        }
+
+        if (midiDevice == null) {
+            if (info.length == 0) {
+                context.getSource().sendFeedback(new LiteralText("§cMIDI设备选择失败。没有有效的MIDI设备。"), false);
+                return 1;
+            } else {
+                deviceName = info[0].getName();  // Default
+                midiDevice = tryGetMidiDevice(info[0]);
+                context.getSource().sendFeedback(new LiteralText(String.format("§cMIDI设备选择失败。现在已选择“%s”", deviceName)), false);
+            }
+        } else {
+            if (deviceName.equals(".")) {
+                context.getSource().sendFeedback(new LiteralText("MIDI设备选择成功。现在已选择默认设备。"), false);
+            } else {
+                context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", deviceName)), false);
+            }
+        }
+
+        try {
+            midiDevice.open();
+            midiReceiver = midiDevice.getReceiver();
+        } catch (MidiUnavailableException e) {
+            context.getSource().sendFeedback(new LiteralText("§cMIDI设备初始化失败。没有有效的MIDI设备。"), false);
+            return 1;
+        }
+        if (deviceName.equals(".")) {
+            context.getSource().sendFeedback(new LiteralText("MIDI设备初始化成功。现在正使用默认设备。"), false);
+        } else {
+            context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", deviceName)), false);
+        }
+
+        return 1;
+    }
+
+    private int deviceRawSend(CommandContext<ServerCommandSource> context) {
         String bytesString = getString(context, "bytes");
 
         if (midiDevice == null || midiReceiver == null) {
@@ -243,21 +279,6 @@ public class MoppMain implements ModInitializer {
 
         context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
         return 1;
-    }
-
-    private String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
-        String dataString = getString(context, "data");
-
-        if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法发送。"), false);
-            throw new IllegalArgumentException();
-        }
-        if (dataString.isEmpty()) {
-            context.getSource().sendFeedback(new LiteralText("§c消息不可为空。"), false);
-            throw new IllegalArgumentException();
-        }
-
-        return dataString.split("\\s+");
     }
 
     private int deviceShortSend(CommandContext<ServerCommandSource> context) {
@@ -343,7 +364,7 @@ public class MoppMain implements ModInitializer {
             }
         } else {
             try {
-                short a = Short.parseShort(data[0]);
+                short a = mapSysExMessageStat(data[0]);
                 byte[] b = Base64.getDecoder().decode(data[1]);
                 short c = Short.parseShort(data[2]);
                 midiReceiver.send(new SysexMessage(a, b, c), -1);
@@ -354,6 +375,18 @@ public class MoppMain implements ModInitializer {
         }
 
         context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
+        return 1;
+    }
+
+    private int deviceShow(CommandContext<ServerCommandSource> context) {
+        if (midiDevice == null || midiReceiver == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法查看。"), false);
+            return 1;
+        }
+
+        MidiDevice.Info piece = midiDevice.getDeviceInfo();
+        context.getSource().sendFeedback(new LiteralText(showMidiDeviceInfo(piece)), false);
+
         return 1;
     }
 

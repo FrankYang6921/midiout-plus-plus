@@ -31,27 +31,28 @@ These commands below are useful when you want to use the mod yourself. However, 
 + Print version information: `/mopp about`
 + Start playing a single MIDI file: `/mopp player play <path>`
 + Stop playing a single MIDI file: `/mopp player stop`
-+ List all the MIDI devices: `/mopp device get`
-+ Select a MIDI device: `/mopp device set <name>`
-+ Reset the selected MIDI device: `/mopp device reset`
++ List all the MIDI devices: `/mopp device list`
 + Panic the selected MIDI device: `/mopp device panic`
-+ Write a raw MIDI message: `/mopp device send <bytes>`
++ Reset the selected MIDI device: `/mopp device reset`
++ Select a MIDI device: `/mopp device select <name>`
+    + Notice: use '.' as a device name to use the default one.
++ Write a raw MIDI message: `/mopp device send raw <bytes>`
     + Notice: these bytes should be sent in base64 form.
 + Send a short MIDI message:
-    + `/mopp device short <status>`
-    + `/mopp device short <status> <data1> <data2>`
-    + `/mopp device short <status> <channel> <data1> <data2>`
+    + `/mopp device send short <status>`
+    + `/mopp device send short <status> <data1> <data2>`
+    + `/mopp device send short <status> <channel> <data1> <data2>`
     + Notice: 'status' can be either in integer or in string.
 + Send a SysEx MIDI message: 
-    + `/mopp device sysex <data> <length>`
-    + `/mopp device sysex <status> <data> <length>`
+    + `/mopp device send sysex <data> <length>`
+    + `/mopp device send sysex <status> <data> <length>`
++ Show the selected MIDI device: `/mopp device show`
 
 You can also try these 3 commands to test your installation:
 ```
-/mopp device set "Microsoft GS Wavetable Synth"
-/mopp device write "kDx/" (or /mopp device NOTE_ON 144 60 127)
-/mopp device short NOTE_ON 60 127
-/mopp device write "gDxA" (or /mopp device NOTE_OFF 128 60 127)
+/mopp device select "Microsoft GS Wavetable Synth"
+/mopp device send raw "kDx/" (or /mopp device send short NOTE_ON 0 60 127)
+/mopp device send raw "gDxA" (or /mopp device send short NOTE_OFF 0 60 127)
 ```
 After typing the first 2 commands, you should hear a middle C note, and after typing the last command, the note should be stopped.
 
