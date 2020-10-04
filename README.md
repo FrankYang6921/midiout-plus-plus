@@ -44,6 +44,9 @@ These commands below are useful when you want to use the mod yourself. However, 
     + `/mopp device send sysex <data> <length>`
     + `/mopp device send sysex <status> <data> <length>`
 + Show the selected MIDI device: `/mopp device show`
++ Load a SoundFont™ file to the virtual MIDI device 'Gervill': `/mopp vdev load <path>`
++ Reload the loaded one to the virtual MIDI device 'Gervill': `/mopp vdev reload`
++ Unload the loaded one from the virtual MIDI device 'Gervill': `/mopp vdev unload`
 
 You can also try these 3 commands to test your installation:
 ```
@@ -62,7 +65,7 @@ Notice: I won't repeat the basic concepts in [HOWTO](#HOWTO).
 It is the easiest way to playback a single MIDI file in accurate tempo with the internal SoundFont™ loader. It can help you test your installation and give you a brief impression of the performance of that MIDI file in Minecraft.
 
 ### Some special MIDI devices...
-When you type in `/mopp device list`, you may see a list of MIDI devices. Here's a quick guide for you to pick these MIDI devices. If you'd like to use the internal SoundFont™ loader(not implemented yet), then you have to choose 'Gervill' by OpenJDK. You should never choose 'Real Time Sequencer' as it's not a proper device to send MIDI messages. In addition, you should never choose 'Microsoft GS Wavetable Synth' either when you have another MIDI device for its poor sound quality.
+When you type in `/mopp device list`, you may see a list of MIDI devices. Here's a quick guide for you to pick these MIDI devices. If you'd like to use the internal SoundFont™ loader, then you have to choose 'Gervill' by OpenJDK. You should never choose 'Real Time Sequencer' as it's not a proper device to send MIDI messages. In addition, you should never choose 'Microsoft GS Wavetable Synth' either when you have another MIDI device for its poor sound quality.
 
 ### The difference between 'panic' and 'reset'...
 'Panic' turns off all the notes, in comparison, 'reset' not only turns off all the notes, but also resets all the instruments to 0.

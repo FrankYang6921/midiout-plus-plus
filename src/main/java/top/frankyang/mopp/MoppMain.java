@@ -17,28 +17,18 @@ import static com.mojang.brigadier.arguments.StringArgumentType.*;
 
 public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
-    private static final int MINOR_VERSION = 1;
-    private static final int REVISION = 3;
+    private static final int MINOR_VERSION = 2;
+    private static final int REVISION = 0;
 
     private Sequencer sequencer;
     private MidiDevice midiDevice;
     private Receiver midiReceiver;
+    private Soundbank soundBank;
 
+    MidiDevice virtualMidi = nameGetMidiDevice("Gervill");
+    Synthesizer virtualSynth = (Synthesizer) virtualMidi;
 
-    private MidiDevice tryGetMidiDevice(MidiDevice.Info info) {
-        try {
-            return MidiSystem.getMidiDevice(info);
-        } catch (MidiUnavailableException ignored) {
-        }
-        return null;
-    }
-
-    private void sendRawMidiMessage(String bytesString) {
-        byte[] data = Base64.getDecoder().decode(bytesString);
-        midiReceiver.send(new LooseMessage(data), -1);
-    }
-
-    private short mapShortMessageStat(String data) {
+    private static short mapShortMessageStat(String data) {
         try {
             return Short.parseShort(data);
         } catch (NumberFormatException e) {
@@ -51,7 +41,7 @@ public class MoppMain implements ModInitializer {
         }
     }
 
-    private short mapSysExMessageStat(String data) {
+    private static short mapSysExMessageStat(String data) {
         try {
             return Short.parseShort(data);
         } catch (NumberFormatException e) {
@@ -64,7 +54,26 @@ public class MoppMain implements ModInitializer {
         }
     }
 
-    private String showMidiDeviceInfo(MidiDevice.Info info) {
+    private static MidiDevice infoGetMidiDevice(MidiDevice.Info info) {
+        try {
+            return MidiSystem.getMidiDevice(info);
+        } catch (MidiUnavailableException ignored) {
+        }
+        return null;
+    }
+
+    private static MidiDevice nameGetMidiDevice(String name) {
+        MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
+        for (MidiDevice.Info piece : info) {
+            if (!piece.getName().equals(name)) {
+                continue;  // Ignores other MIDI devices.
+            }
+            return infoGetMidiDevice(piece);
+        }
+        return null;
+    }
+
+    private static String showMidiDeviceInfo(MidiDevice.Info info) {
         return String.format("§eMIDI设备：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription());
     }
 
@@ -82,7 +91,15 @@ public class MoppMain implements ModInitializer {
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend))))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend))))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("show").executes(this::deviceShow))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("load").then(CommandManager.argument("path", string()).executes(this::vDevSf2Load)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("reload").executes(this::vDevSf2Reload))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("unload").executes(this::vDevSf2Unload))));
         });
+    }
+
+    private void sendRawMidiMessage(String bytesString) {
+        byte[] data = Base64.getDecoder().decode(bytesString);
+        midiReceiver.send(new LooseMessage(data), -1);
     }
 
     private String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
@@ -115,14 +132,18 @@ public class MoppMain implements ModInitializer {
             sequencer.setSequence(sequence);
             sequencer.open();
             sequencer.start();
-            context.getSource().sendFeedback(new LiteralText("已经开始播放这个MIDI。"), false);
         } catch (IOException e) {
             context.getSource().sendFeedback(new LiteralText("§c无法打开MIDI文件。"), false);
+            return 1;
         } catch (InvalidMidiDataException e) {
             context.getSource().sendFeedback(new LiteralText("§c无法解析MIDI文件。"), false);
+            return 1;
         } catch (MidiUnavailableException e) {
             context.getSource().sendFeedback(new LiteralText("§cMIDI设备正忙。"), false);
+            return 1;
         }
+
+        context.getSource().sendFeedback(new LiteralText("已经开始播放这个MIDI。"), false);
 
         return 1;
     }
@@ -223,41 +244,38 @@ public class MoppMain implements ModInitializer {
 
         midiDevice = null;
         midiReceiver = null;
-        for (MidiDevice.Info piece : info) {
-            if (!(deviceName.equals(".") || deviceName.equals(piece.getName()))) {
-                continue;  // Ignores other MIDI devices.
-            }
-            midiDevice = tryGetMidiDevice(piece);
+        if (deviceName.equals(".")) {
+            midiDevice = nameGetMidiDevice("Gervill");
+        } else {
+            midiDevice = nameGetMidiDevice(deviceName);
         }
 
+
         if (midiDevice == null) {
-            if (info.length == 0) {
-                context.getSource().sendFeedback(new LiteralText("§cMIDI设备选择失败。没有有效的MIDI设备。"), false);
-                return 1;
-            } else {
-                deviceName = info[0].getName();  // Default
-                midiDevice = tryGetMidiDevice(info[0]);
-                context.getSource().sendFeedback(new LiteralText(String.format("§cMIDI设备选择失败。现在已选择“%s”", deviceName)), false);
-            }
+            context.getSource().sendFeedback(new LiteralText("§cMIDI设备选择失败。不是有效的MIDI设备。"), false);
+            context.getSource().sendFeedback(new LiteralText("§3*你可以键入'/mopp device list'来获取有效的MIDI设备列表。"), false);
+            return 1;
+        } else if (deviceName.equals(".")) {
+            context.getSource().sendFeedback(new LiteralText("MIDI设备选择成功。现在已选择“Gervill”。"), false);
         } else {
-            if (deviceName.equals(".")) {
-                context.getSource().sendFeedback(new LiteralText("MIDI设备选择成功。现在已选择默认设备。"), false);
-            } else {
-                context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", deviceName)), false);
-            }
+            context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", deviceName)), false);
         }
 
         try {
             midiDevice.open();
             midiReceiver = midiDevice.getReceiver();
         } catch (MidiUnavailableException e) {
-            context.getSource().sendFeedback(new LiteralText("§cMIDI设备初始化失败。没有有效的MIDI设备。"), false);
+            context.getSource().sendFeedback(new LiteralText("§cMIDI设备初始化失败。不是有效的MIDI设备。"), false);
+            context.getSource().sendFeedback(new LiteralText("§3*你可以键入'/mopp device list'来获取有效的MIDI设备列表。"), false);
             return 1;
         }
         if (deviceName.equals(".")) {
-            context.getSource().sendFeedback(new LiteralText("MIDI设备初始化成功。现在正使用默认设备。"), false);
+            context.getSource().sendFeedback(new LiteralText("MIDI设备初始化成功。现在正使用“Gervill”。"), false);
         } else {
             context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", deviceName)), false);
+        }
+        if (midiDevice.getDeviceInfo().getName().equals("Gervill") && soundBank == null) {  // Sf2 loaded hint
+            context.getSource().sendFeedback(new LiteralText("§3*你选择了虚拟MIDI设备，但未加载Sf2音色库。加载后效果更佳。"), false);
         }
 
         return 1;
@@ -387,6 +405,68 @@ public class MoppMain implements ModInitializer {
         MidiDevice.Info piece = midiDevice.getDeviceInfo();
         context.getSource().sendFeedback(new LiteralText(showMidiDeviceInfo(piece)), false);
 
+        return 1;
+    }
+
+    private int vDevSf2Load(CommandContext<ServerCommandSource> context) {
+        try {
+            soundBank = MidiSystem.getSoundbank(new File(getString(context, "path")));
+        } catch (IOException e) {
+            context.getSource().sendFeedback(new LiteralText("§c无法打开Sf2文件。"), false);
+            return 1;
+        } catch (InvalidMidiDataException e) {
+            context.getSource().sendFeedback(new LiteralText("§c无法解析Sf2文件。"), false);
+            return 1;
+        }
+
+        if (virtualSynth == null) {
+            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            return 1;
+        }
+        virtualSynth.loadAllInstruments(soundBank);
+
+        context.getSource().sendFeedback(new LiteralText("Sf2音色库加载成功。"), false);
+        if (midiDevice == null || !midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
+            context.getSource().sendFeedback(new LiteralText("§3*你加载了Sf2音色库，但未选择虚拟MIDI设备。已经强制选择。"), false);
+        }
+
+        return 1;
+    }
+
+    private int vDevSf2Reload(CommandContext<ServerCommandSource> context) {
+        if (soundBank == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未加载Sf2音色库，因此无法重新加载。"), false);
+            return 1;
+        }
+
+        if (virtualSynth == null) {
+            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            return 1;
+        }
+        virtualSynth.unloadAllInstruments(soundBank);
+        virtualSynth.loadAllInstruments(soundBank);
+
+        context.getSource().sendFeedback(new LiteralText("Sf2音色库重新加载成功。"), false);
+        return 1;
+    }
+
+    private int vDevSf2Unload(CommandContext<ServerCommandSource> context) {
+        if (soundBank == null) {
+            context.getSource().sendFeedback(new LiteralText("§c尚未加载Sf2音色库，因此无法卸载。"), false);
+            return 1;
+        }
+
+        if (virtualSynth == null) {
+            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            return 1;
+        }
+        virtualSynth.unloadAllInstruments(soundBank);
+        soundBank = null;
+
+        context.getSource().sendFeedback(new LiteralText("Sf2音色库卸载成功。"), false);
+        if (midiDevice != null && midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
+            context.getSource().sendFeedback(new LiteralText("§3*你卸载了Sf2音色库，但选择了虚拟MIDI设备。加载后效果更佳。"), false);
+        }
         return 1;
     }
 
