@@ -14,10 +14,10 @@ public class WhatIsThisThingLike {
 
 ## Getting Started
 To run this mod, you need:
-+ Minecraft 1.16 or newer with...
++ Minecraft 1.16.x with...
   + Fabric Loader \+ Fabric API
   
-This mod meant to replace the original MIDIOut, and it requires MIDI devices or SoundFont™ banks. Only Windows is supported.
+This mod is designed to replace the original MIDIOut, and it requires MIDI devices or SoundFont™ banks. Only Windows is supported.
 
 ## Releases
 Use the link here to redirect to the [releases](https://github.com/FrankYang6921/midiout-/releases) page.
@@ -96,6 +96,9 @@ For short messages:
 For sysex messages:
 + SYSTEM_EXCLUSIVE = 0xF0
 + SPECIAL_SYSTEM_EXCLUSIVE = 0xF7
+
+### How to use SoundFont™ loader?
+If you'd like to use the internal SoundFont™ loader, then you have to choose 'Gervill' by OpenJDK. Keep in mind that when you have already set the SoundFont™, changing the MIDI device to 'Gervill' will override that setting with the default one. That means you should set the device first then load the SoundFont™, or you have to reload the SoundFont™ again, which is time-consuming.
 
 ## License
 MIDIOut++ is a free software by kworker(FrankYang6921) under GPLv3 license. There is no warranty for the program.
