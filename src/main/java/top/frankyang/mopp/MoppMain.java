@@ -11,9 +11,9 @@ import javax.sound.midi.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Objects;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.*;
-
 
 public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
@@ -21,16 +21,16 @@ public class MoppMain implements ModInitializer {
     private static final int REVISION = 1;
     MidiDevice virtualMidi;
     Synthesizer virtualSynth;
-    MidiDevice.Info vDevInfo;
+    MidiDevice.Info virtualInfo;
     private Sequencer sequencer;
     private MidiDevice midiDevice;
     private Receiver midiReceiver;
     private Soundbank soundBank;
 
     {
-        virtualMidi = safeNameGetMidiDevice("Gervill");
-        virtualSynth = (Synthesizer) virtualMidi;
-        vDevInfo = virtualMidi.getDeviceInfo();
+        virtualMidi = getMidiDeviceByRawName("Gervill");
+        virtualSynth = (Synthesizer) Objects.requireNonNull(virtualMidi);
+        virtualInfo = Objects.requireNonNull(virtualMidi).getDeviceInfo();
     }
 
     private static short mapShortMessageStat(String data) {
@@ -60,33 +60,35 @@ public class MoppMain implements ModInitializer {
     }
 
     private static String showMidiDeviceInfo(MidiDevice.Info info) {
-        return String.format("§eMIDI设备：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription());
+        return String.format(
+                "§eMIDI设备：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription()
+        );
     }
 
-    private MidiDevice infoGetMidiDevice(MidiDevice.Info info) {
+    private MidiDevice getMidiDeviceByInfo(MidiDevice.Info info) {
         try {
-            return info.equals(vDevInfo) ? virtualMidi : MidiSystem.getMidiDevice(info);
+            return info.equals(virtualInfo) ? virtualMidi : MidiSystem.getMidiDevice(info);
         } catch (Exception e) {
             return null;
         }
     }
 
-    private MidiDevice nameGetMidiDevice(String name) {
+    private MidiDevice getMidiDeviceByName(String name) {
         try {
-            return name.equals("Gervill") ? virtualMidi : safeNameGetMidiDevice(name);
+            return name.equals("Gervill") ? virtualMidi : getMidiDeviceByRawName(name);
         } catch (Exception e) {
             return null;
         }
     }
 
-    private MidiDevice safeNameGetMidiDevice(String name) {
+    private MidiDevice getMidiDeviceByRawName(String name) {
         MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
 
         for (MidiDevice.Info piece : info) {
             if (!piece.getName().equals(name)) {
                 continue;  // Ignores other MIDI devices.
             }
-            return infoGetMidiDevice(piece);
+            return getMidiDeviceByInfo(piece);
         }
         return null;
     }
@@ -180,13 +182,13 @@ public class MoppMain implements ModInitializer {
                 String.format(
                         "§e§lMIDIOut++§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。\n\n", MAJOR_VERSION, MINOR_VERSION, REVISION
                 ) +
-                        "§e§l集气瓶的FAQ：§r\n" +
+                        "§e§lFAQ：§r\n" +
                         "§eQ1§r：“遵循GPLv3协议的自由软件”是什么意思？\n" +
                         "§eA1§r：这意味着你有自由按自己的意愿使用软件，有自由按自己的需要修改软件，有自由把软件分享给友邻，以及有自由分享自己对软件的修改。简而言之，你可以用它做任何事，只须遵守§oGPLv3§r的条款。\n" +
                         "§eQ2§r：我使用本软件制作的作品属于红石音乐吗？\n" +
-                        "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。" +
-                        "§eQ2§r：我可以在哪里找到使用本软件的帮助？\n" +
-                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。你也可以前往QQ群（1129026982）或加作者QQ（3450123872）。"
+                        "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。\n" +
+                        "§eQ2§r：我可以在哪里找到使用本软件的技术支持？\n" +
+                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。你也可以前往红石音乐俱乐部或Minecraft视听俱乐部（591318869或1129026982）或加作者QQ（3450123872）。"
         ), false);
 
         return 1;
@@ -258,9 +260,9 @@ public class MoppMain implements ModInitializer {
         midiDevice = null;
         midiReceiver = null;
         if (deviceName.equals(".")) {
-            midiDevice = nameGetMidiDevice("Gervill");
+            midiDevice = getMidiDeviceByName("Gervill");
         } else {
-            midiDevice = nameGetMidiDevice(deviceName);
+            midiDevice = getMidiDeviceByName(deviceName);
         }
 
 
@@ -308,7 +310,7 @@ public class MoppMain implements ModInitializer {
 
         sendRawMidiMessage(bytesString);
 
-        context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
+        context.getSource().sendFeedback(new LiteralText("发送了原生消息。"), false);
         return 1;
     }
 
@@ -362,8 +364,8 @@ public class MoppMain implements ModInitializer {
                 return 1;
             }
         }
+        context.getSource().sendFeedback(new LiteralText("发送了一般消息。"), false);
 
-        context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
         return 1;
     }
 
@@ -405,7 +407,7 @@ public class MoppMain implements ModInitializer {
             }
         }
 
-        context.getSource().sendFeedback(new LiteralText("发送了消息。"), false);
+        context.getSource().sendFeedback(new LiteralText("发送了一般消息。"), false);
         return 1;
     }
 

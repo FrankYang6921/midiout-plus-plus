@@ -101,4 +101,4 @@ public class WhatIsThisThingLike {
 如果您想要使用内置SoundFont™加载器，则您应该选择OpenJDK开发的“Gervill”。记住，当您已经设定好了SoundFont™，把MIDI设备更改至“Gervill”会把SoundFont™重置至默认。这意味着您应该先选择设备，再设定SoundFont™，否则您必须重新加载SoundFont™（浪费时间！）。
 
 ## 授权
-MIDIOut++ 是由kworker(FrankYang6921)制作，遵从GPLv3协议的自由软件。本软件没有担保。
+MIDIOut++ 是由kworker(FrankYang6921)制作，遵从GPLv3协议的自由软件。本软件没有担保。你可以前往红石音乐俱乐部或Minecraft视听俱乐部（591318869或1129026982）或加作者QQ（3450123872）以获取帮助。
