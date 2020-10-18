@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.Objects;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.*;
+import net.minecraft.client.particle.ParticleManager;
 
 public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
