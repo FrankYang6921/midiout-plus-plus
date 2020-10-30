@@ -12,68 +12,68 @@ public class WhatIsThisThingLike {
 }
 ```
 
-## Getting Started
-To run this mod, you need:
-+ Minecraft 1.16.x with...
-  + Fabric Loader \+ Fabric API
-  
-This mod is designed to replace the original MIDIOut, and it requires MIDI devices or SoundFont™ banks. Only Windows is supported.
+## 开始
+要运行这个模组，你需要：
++ Minecraft 1.16.x：装有……
+  + Fabric Loader 和 Fabric API
 
-## Releases
-Use the link here to redirect to the [releases](https://github.com/FrankYang6921/midiout-/releases) page.
+这个模组的目的是取代原版的MIDIOut，它需要MIDI设备或SoundFont™音色库。这个模组只支持Windows。
 
-## HOWTO
-These commands below are useful when you want to use the mod yourself. However, it's much easier and faster to use [MCDI](https://github.com/FrankYang6921/mcdi) for creating musics.
+## 发行
+使用这个链接来重定向到 [发行](https://github.com/FrankYang6921/midiout-/releases) 页。
 
-+ Print version information: `/mopp about`
-+ Start playing a single MIDI file: `/mopp player play <path>`
-+ Stop playing a single MIDI file: `/mopp player stop`
-+ List all the MIDI devices: `/mopp device list`
-+ Panic the selected MIDI device: `/mopp device panic`
-+ Reset the selected MIDI device: `/mopp device reset`
-+ Select a MIDI device: `/mopp device select <name>`
-    + Notice: use '.' as a device name to use the default one.
-+ Write a raw MIDI message: `/mopp device send raw <bytes>`
-    + Notice: these bytes should be sent in base64 form.
-+ Send a short MIDI message:
+## 教程
+如果你想自己使用这个模组，那么下方的命令可能会帮到你。但是用 [MCDI](https://github.com/FrankYang6921/mcdi) 生成红石音乐更快也更简单。
+
++ 打印版本信息：`/mopp about`
++ 开始播放单个MIDI文件：`/mopp player play <path>`
++ 停止播放单个MIDI文件：`/mopp player stop`
++ 列出所有的MIDI设备：`/mopp device list`
++ 复位选定的MIDI设备：`/mopp device panic`
++ 重置选定的MIDI设备：`/mopp device reset`
++ 选择一个MIDI设备：`/mopp device select <name>`
+    + 提示：用”.“作为设备名就可以选择默认设备。
++ 写入一个原生MIDI消息：`/mopp device send raw <bytes>`
+    + 提示：这些字节应该用”base64“编码。
++ 发送一个一般MIDI消息：
     + `/mopp device send short <status>`
     + `/mopp device send short <status> <data1> <data2>`
     + `/mopp device send short <status> <channel> <data1> <data2>`
-    + Notice: 'status' can be either in integer or in string.
-+ Send a SysEx MIDI message: 
+    + 提示：“<status>”既可以是整数，也可以是字符串。
++ 发送一个系统MIDI消息：
     + `/mopp device send sysex <data> <length>`
     + `/mopp device send sysex <status> <data> <length>`
-+ Show the selected MIDI device: `/mopp device show`
-+ Load a SoundFont™ file to the virtual MIDI device 'Gervill': `/mopp vdev load <path>`
-+ Reload the loaded one to the virtual MIDI device 'Gervill': `/mopp vdev reload`
-+ Unload the loaded one from the virtual MIDI device 'Gervill': `/mopp vdev unload`
++ 显示选定的MIDI设备：`/mopp device show`
++ 将 SoundFont™ 加载进内置MIDI设备“Gervill”： `/mopp vdev load <path>`
++ 将 SoundFont™ 重新加载进内置MIDI设备“Gervill”：`/mopp vdev reload`
++ 将 SoundFont™ 从内置MIDI设备“Gervill”卸载：`/mopp vdev unload`
 
-You can also try these 3 commands to test your installation:
+如果要测试安装是否成功，您也可以尝试以下的3条命令：:
 ```
 /mopp device select "Microsoft GS Wavetable Synth"
-/mopp device send raw "kDx/" (or /mopp device send short NOTE_ON 0 60 127)
-/mopp device send raw "gDxA" (or /mopp device send short NOTE_OFF 0 60 127)
+/mopp device send raw "kDx/" (或 /mopp device send short NOTE_ON 0 60 127)
+/mopp device send raw "gDxA" (或 /mopp device send short NOTE_OFF 0 60 127)
 ```
-After typing in the first 2 commands, you should hear a middle C note, and after typing in the last command, the note should be stopped.
+在键入前两个命令之后，你应该听见一个中央C音符；在键入最后一个命令之后，音符应该停止。
 
-For more details, read [Details](#Details).
+有关细节，敬请参阅[技术细节](#技术细节)。
 
-## Details
-Notice: I won't repeat the basic concepts in [HOWTO](#HOWTO).
+## 技术细节
+提示：要了解基本概念，敬请参阅[教程](#教程).
 
-### What can the 'player' sub-command do?
-It is the easiest way to playback a single MIDI file in accurate tempo with the internal SoundFont™ loader. It can help you test your installation and give you a brief impression of the performance of that MIDI file in Minecraft.
+### “player”子命令可以干什么？
+它是用内置SoundFont™加载器来播放MIDI文件的最简方法之一（节奏完全准确）。它可以帮助您测试安装是否成功，也可以给您一个该MIDI在Minecraft中听感的第一印象。
 
-### Some special MIDI devices...
-When you type in `/mopp device list`, you may see a list of MIDI devices. Here's a quick guide for you to pick these MIDI devices. If you'd like to use the internal SoundFont™ loader, then you have to choose 'Gervill' by OpenJDK. You should never choose 'Real Time Sequencer' as it's not a proper device to send MIDI messages. In addition, you should never choose 'Microsoft GS Wavetable Synth' either when you have another MIDI device for its poor sound quality.
+### 一些特殊的MIDI设备……
+当您键入 `/mopp device list`，你会看到一列MIDI设备。这是挑选MIDI设备的快速指南。如果您想要使用内置SoundFont™加载器，则您应该选择OpenJDK开发的“Gervill”。永远别选“Real Time Sequencer”，因为它根本不是一个可以发送MIDI消息的设备。此外，当您有另一个MIDI设备时，您也不应该选择“Microsoft GS Wavetable Synth”，因为其音质太差。
 
-### The difference between 'panic' and 'reset'...
-'Panic' turns off all the notes, in comparison, 'reset' not only turns off all the notes, but also resets all the instruments to 0.
+### “复位”和“重置”的不同……
+“复位”只是关闭所有的音符，但“重置”不仅关闭所有的音符，还把所有的乐器重置到0（大钢琴）。
 
-### The string shortcuts you can use...
-For `/mopp device send short <status> ...` and `/mopp device send sysex <status> <data> <length>`, you can use string shortcuts for the '\<status\>' instead of an integer.
+### 您可以使用的字符串……
+对于`/mopp device send short <status> ...`和`/mopp device send sysex <status> <data> <length>`您可以把“\<status\>”设为字符串，而非整数。
 
-For short messages:
+一般消息：
 + MIDI_TIME_CODE = 0xF1
 + SONG_POSITION_POINTER = 0xF2
 + SONG_SELECT = 0xF3
@@ -93,12 +93,12 @@ For short messages:
 + CHANNEL_PRESSURE = 0xD0
 + PITCH_BEND = 0xE0
 
-For sysex messages:
+系统消息：
 + SYSTEM_EXCLUSIVE = 0xF0
 + SPECIAL_SYSTEM_EXCLUSIVE = 0xF7
 
-### How to use SoundFont™ loader?
-If you'd like to use the internal SoundFont™ loader, then you have to choose 'Gervill' by OpenJDK. Keep in mind that when you have already set the SoundFont™, changing the MIDI device to 'Gervill' will override that setting with the default one. That means you should set the device first then load the SoundFont™, or you have to reload the SoundFont™ again, which is time-consuming.
+### 如何使用SoundFont™加载器？
+如果您想要使用内置SoundFont™加载器，则您应该选择OpenJDK开发的“Gervill”。记住，当您已经设定好了SoundFont™，把MIDI设备更改至“Gervill”会把SoundFont™重置至默认。这意味着您应该先选择设备，再设定SoundFont™，否则您必须重新加载SoundFont™（浪费时间！）。
 
-## License
-MIDIOut++ is a free software by kworker(FrankYang6921) under GPLv3 license. There is no warranty for the program.
+## 授权
+MIDIOut++ 是由kworker(FrankYang6921)制作，遵从GPLv3协议的自由软件。本软件没有担保。你可以前往红石音乐俱乐部或Minecraft视听俱乐部（591318869或1129026982）或加作者QQ（3450123872）以获取帮助。
