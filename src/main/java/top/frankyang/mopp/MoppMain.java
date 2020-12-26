@@ -18,7 +18,7 @@ import static com.mojang.brigadier.arguments.StringArgumentType.*;
 public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 2;
-    private static final int REVISION = 1;
+    private static final int REVISION = 2;
     MidiDevice virtualMidi;
     Synthesizer virtualSynth;
     MidiDevice.Info virtualInfo;
@@ -61,7 +61,7 @@ public class MoppMain implements ModInitializer {
 
     private static String showMidiDeviceInfo(MidiDevice.Info info) {
         return String.format(
-                "§eMIDI设备：§r%s\n§e制造商§r：§9§n%s§r。\n§e详细信息：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription()
+                "§e友好名称：§r%s\n§e制造商§r：§9§n%s§r。\n§e设备描述：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription()
         );
     }
 
@@ -107,9 +107,9 @@ public class MoppMain implements ModInitializer {
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend))))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend))))));
             dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("show").executes(this::deviceShow))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("load").then(CommandManager.argument("path", string()).executes(this::vDevSf2Load)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("reload").executes(this::vDevSf2Reload))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("unload").executes(this::vDevSf2Unload))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("load").then(CommandManager.argument("path", string()).executes(this::vDevSF2Load)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("reload").executes(this::vDevSF2Reload))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("unload").executes(this::vDevSF2Unload))));
         });
     }
 
@@ -180,15 +180,8 @@ public class MoppMain implements ModInitializer {
     private int about(CommandContext<ServerCommandSource> context) {
         context.getSource().sendFeedback(new LiteralText(
                 String.format(
-                        "§e§lMIDIOut++§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。\n\n", MAJOR_VERSION, MINOR_VERSION, REVISION
-                ) +
-                        "§e§lFAQ：§r\n" +
-                        "§eQ1§r：“遵循GPLv3协议的自由软件”是什么意思？\n" +
-                        "§eA1§r：这意味着你有自由按自己的意愿使用软件，有自由按自己的需要修改软件，有自由把软件分享给友邻，以及有自由分享自己对软件的修改。简而言之，你可以用它做任何事，只须遵守§oGPLv3§r的条款。\n" +
-                        "§eQ2§r：我使用本软件制作的作品属于红石音乐吗？\n" +
-                        "§eA2§r：看情况。如果你使用本软件中的§oSoundFont™§r驱动功能，则你的作品是红石音乐。如果你使用本软件中的MIDI设备连接功能，则你的作品只是黑石音乐。我永远推荐你使用§oSoundFont™§r驱动。\n" +
-                        "§eQ2§r：我可以在哪里找到使用本软件的技术支持？\n" +
-                        "§eA2§r：你可以前往https://github.com/FrankYang6921/midiout-#howto获取帮助。你也可以前往红石音乐俱乐部或Minecraft视听俱乐部（591318869或1129026982）或加作者QQ（3450123872）。"
+                        "§e§lMIDIOut++§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。", MAJOR_VERSION, MINOR_VERSION, REVISION
+                )
         ), false);
 
         return 1;
@@ -289,8 +282,8 @@ public class MoppMain implements ModInitializer {
         } else {
             context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", deviceName)), false);
         }
-        if (midiDevice.getDeviceInfo().getName().equals("Gervill") && soundBank == null) {  // Sf2 loaded hint
-            context.getSource().sendFeedback(new LiteralText("§3*你选择了虚拟MIDI设备，但未加载Sf2音色库。加载后效果更佳。"), false);
+        if (midiDevice.getDeviceInfo().getName().equals("Gervill") && soundBank == null) {  // SF2 loaded hint
+            context.getSource().sendFeedback(new LiteralText("§3* 你未加载SF2音色库，但选择了虚拟MIDI设备（不推荐）。"), false);
         }
 
         return 1;
@@ -423,14 +416,14 @@ public class MoppMain implements ModInitializer {
         return 1;
     }
 
-    private int vDevSf2Load(CommandContext<ServerCommandSource> context) {
+    private int vDevSF2Load(CommandContext<ServerCommandSource> context) {
         try {
             soundBank = MidiSystem.getSoundbank(new File(getString(context, "path")));
         } catch (IOException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法打开Sf2文件。"), false);
+            context.getSource().sendFeedback(new LiteralText("§c无法打开SF2文件。"), false);
             return 1;
         } catch (InvalidMidiDataException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法解析Sf2文件。"), false);
+            context.getSource().sendFeedback(new LiteralText("§c无法解析SF2文件。"), false);
             return 1;
         }
 
@@ -440,17 +433,17 @@ public class MoppMain implements ModInitializer {
         }
         virtualSynth.loadAllInstruments(soundBank);
 
-        context.getSource().sendFeedback(new LiteralText("Sf2音色库加载成功。"), false);
+        context.getSource().sendFeedback(new LiteralText("SF2音色库加载成功。"), false);
         if (midiDevice == null || !midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
-            context.getSource().sendFeedback(new LiteralText("§3*你加载了Sf2音色库，但未选择虚拟MIDI设备。选择以生效。"), false);
+            context.getSource().sendFeedback(new LiteralText("§3* 你加载了SF2音色库，但未选择虚拟MIDI设备（不推荐）。"), false);
         }
 
         return 1;
     }
 
-    private int vDevSf2Reload(CommandContext<ServerCommandSource> context) {
+    private int vDevSF2Reload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未加载Sf2音色库，因此无法重新加载。"), false);
+            context.getSource().sendFeedback(new LiteralText("§c尚未加载SF2音色库，因此无法重新加载。"), false);
             return 1;
         }
 
@@ -461,13 +454,13 @@ public class MoppMain implements ModInitializer {
         virtualSynth.unloadAllInstruments(soundBank);
         virtualSynth.loadAllInstruments(soundBank);
 
-        context.getSource().sendFeedback(new LiteralText("Sf2音色库重新加载成功。"), false);
+        context.getSource().sendFeedback(new LiteralText("SF2音色库重新加载成功。"), false);
         return 1;
     }
 
-    private int vDevSf2Unload(CommandContext<ServerCommandSource> context) {
+    private int vDevSF2Unload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未加载Sf2音色库，因此无法卸载。"), false);
+            context.getSource().sendFeedback(new LiteralText("§c尚未加载SF2音色库，因此无法卸载。"), false);
             return 1;
         }
 
@@ -478,9 +471,9 @@ public class MoppMain implements ModInitializer {
         virtualSynth.unloadAllInstruments(soundBank);
         soundBank = null;
 
-        context.getSource().sendFeedback(new LiteralText("Sf2音色库卸载成功。"), false);
+        context.getSource().sendFeedback(new LiteralText("SF2音色库卸载成功。"), false);
         if (midiDevice != null && midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
-            context.getSource().sendFeedback(new LiteralText("§3*你卸载了Sf2音色库，但选择了虚拟MIDI设备。加载后效果更佳。"), false);
+            context.getSource().sendFeedback(new LiteralText("§3* 你卸载了SF2音色库，但选择了虚拟MIDI设备（不推荐）。"), false);
         }
         return 1;
     }
