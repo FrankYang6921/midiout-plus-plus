@@ -15,7 +15,7 @@ import java.util.Objects;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.*;
 
-public class MoppMain implements ModInitializer {
+public final class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 2;
     private static final int REVISION = 2;
@@ -113,12 +113,12 @@ public class MoppMain implements ModInitializer {
         });
     }
 
-    private void sendRawMidiMessage(String bytesString) {
+    private static void sendRawMidiMessage(String bytesString) {
         byte[] data = Base64.getDecoder().decode(bytesString);
         midiReceiver.send(new LooseMessage(data), -1);
     }
 
-    private String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
+    private static String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
         String dataString = getString(context, "data");
 
         if (midiDevice == null || midiReceiver == null) {
