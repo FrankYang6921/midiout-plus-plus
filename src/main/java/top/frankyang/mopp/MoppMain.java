@@ -19,15 +19,15 @@ public class MoppMain implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 2;
     private static final int REVISION = 2;
-    MidiDevice virtualMidi;
-    Synthesizer virtualSynth;
-    MidiDevice.Info virtualInfo;
-    private Sequencer sequencer;
-    private MidiDevice midiDevice;
-    private Receiver midiReceiver;
-    private Soundbank soundBank;
+    private static final MidiDevice virtualMidi;
+    private static final Synthesizer virtualSynth;
+    private static final MidiDevice.Info virtualInfo;
+    private static Sequencer sequencer;
+    private static MidiDevice midiDevice;
+    private static Receiver midiReceiver;
+    private static Soundbank soundBank;
 
-    {
+    static {
         virtualMidi = getMidiDeviceByRawName("Gervill");
         virtualSynth = (Synthesizer) Objects.requireNonNull(virtualMidi);
         virtualInfo = Objects.requireNonNull(virtualMidi).getDeviceInfo();
@@ -65,7 +65,7 @@ public class MoppMain implements ModInitializer {
         );
     }
 
-    private MidiDevice getMidiDeviceByInfo(MidiDevice.Info info) {
+    private static MidiDevice getMidiDeviceByInfo(MidiDevice.Info info) {
         try {
             return info.equals(virtualInfo) ? virtualMidi : MidiSystem.getMidiDevice(info);
         } catch (Exception e) {
@@ -73,7 +73,7 @@ public class MoppMain implements ModInitializer {
         }
     }
 
-    private MidiDevice getMidiDeviceByName(String name) {
+    private static MidiDevice getMidiDeviceByName(String name) {
         try {
             return name.equals("Gervill") ? virtualMidi : getMidiDeviceByRawName(name);
         } catch (Exception e) {
@@ -81,7 +81,7 @@ public class MoppMain implements ModInitializer {
         }
     }
 
-    private MidiDevice getMidiDeviceByRawName(String name) {
+    private static MidiDevice getMidiDeviceByRawName(String name) {
         MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
 
         for (MidiDevice.Info piece : info) {

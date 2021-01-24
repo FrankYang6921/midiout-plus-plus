@@ -4,13 +4,13 @@
   "version": "${version}",
 
   "name": "MIDIOut++",
-  "description": "The legit MIDIOut mod for Minecraft 1.16.x.",
+  "description": "The renewed MIDIOut mod for Minecraft 1.16.x.",
   "authors": [
     "kworker"
   ],
   "contact": {
     "homepage": "https://frankyang6921.github.io/",
-    "sources": "https://github.com/FrankYang6921/midiout-"
+    "sources": "https://github.com/FrankYang6921/midiout-plus-plus"
   },
 
   "license": "GPLv3",
@@ -23,7 +23,6 @@
     ]
   },
   "mixins": [
-    "mopp.mixins.json"
   ],
 
   "depends": {

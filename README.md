@@ -20,7 +20,7 @@ public class WhatIsThisThingLike {
 这个模组的目的是取代原版的MIDIOut，它需要MIDI设备或SoundFont™音色库。这个模组只支持Windows。
 
 ## 发行
-使用这个链接来重定向到 [发行](https://github.com/FrankYang6921/midiout-/releases) 页。
+使用这个链接来重定向到 [发行](https://github.com/FrankYang6921/midiout-plus-plus/releases) 页。
 
 ## 教程
 如果你想自己使用这个模组，那么下方的命令可能会帮到你。但是用 [MCDI](https://github.com/FrankYang6921/mcdi) 生成红石音乐更快也更简单。
