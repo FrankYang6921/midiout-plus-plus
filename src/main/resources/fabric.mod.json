@@ -16,10 +16,10 @@
   "license": "GPLv3",
   "icon": "assets/mopp/icon.png",
 
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
     "main": [
-      "top.frankyang.mopp.MoppMain"
+      "top.frankyang.mopp.Main"
     ]
   },
   "mixins": [

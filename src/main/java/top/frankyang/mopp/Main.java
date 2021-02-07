@@ -15,10 +15,10 @@ import java.util.Objects;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.*;
 
-public final class MoppMain implements ModInitializer {
+public final class Main implements ModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 2;
-    private static final int REVISION = 2;
+    private static final int REVISION = 3;
     private static final MidiDevice virtualMidi;
     private static final Synthesizer virtualSynth;
     private static final MidiDevice.Info virtualInfo;
@@ -122,11 +122,11 @@ public final class MoppMain implements ModInitializer {
         String dataString = getString(context, "data");
 
         if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法发送。"), false);
+            context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法发送消息。"));
             throw new IllegalArgumentException();
         }
         if (dataString.isEmpty()) {
-            context.getSource().sendFeedback(new LiteralText("§c消息不可为空。"), false);
+            context.getSource().sendError(new LiteralText("消息不可为空。"));
             throw new IllegalArgumentException();
         }
 
@@ -135,27 +135,27 @@ public final class MoppMain implements ModInitializer {
 
     private int playerPlay(CommandContext<ServerCommandSource> context) {
         if (sequencer != null && sequencer.isRunning()) {
-            context.getSource().sendFeedback(new LiteralText("§c上一个MIDI尚未结束或被停止。"), false);
+            context.getSource().sendError(new LiteralText("上一个MIDI尚未结束或被停止。"));
             return 1;
         }
         try {
             Sequence sequence = MidiSystem.getSequence(new File(getString(context, "path")));
             sequencer = MidiSystem.getSequencer();
             if (sequencer == null) {
-                context.getSource().sendFeedback(new LiteralText("§cMIDI设备无效。"), false);
+                context.getSource().sendError(new LiteralText("MIDI设备无效。"));
                 return 1;
             }
             sequencer.setSequence(sequence);
             sequencer.open();
             sequencer.start();
         } catch (IOException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法打开MIDI文件。"), false);
+            context.getSource().sendError(new LiteralText("无法打开MIDI文件。"));
             return 1;
         } catch (InvalidMidiDataException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法解析MIDI文件。"), false);
+            context.getSource().sendError(new LiteralText("无法解析MIDI文件。"));
             return 1;
         } catch (MidiUnavailableException e) {
-            context.getSource().sendFeedback(new LiteralText("§cMIDI设备正忙。"), false);
+            context.getSource().sendError(new LiteralText("MIDI设备正忙。"));
             return 1;
         }
 
@@ -166,7 +166,7 @@ public final class MoppMain implements ModInitializer {
 
     private int playerStop(CommandContext<ServerCommandSource> context) {
         if (sequencer == null || !sequencer.isRunning()) {
-            context.getSource().sendFeedback(new LiteralText("§c上一个MIDI已经结束或被停止。"), false);
+            context.getSource().sendError(new LiteralText("上一个MIDI已经结束或被停止。"));
             return 1;
         }
 
@@ -201,7 +201,7 @@ public final class MoppMain implements ModInitializer {
 
     private int devicePanic(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法复位。"), false);
+            context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法复位。"));
             return 1;
         }
 
@@ -221,7 +221,7 @@ public final class MoppMain implements ModInitializer {
 
     private int deviceReset(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法重置。"), false);
+            context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法重置。"));
             return 1;
         }
 
@@ -260,11 +260,10 @@ public final class MoppMain implements ModInitializer {
 
 
         if (midiDevice == null) {
-            context.getSource().sendFeedback(new LiteralText("§cMIDI设备选择失败。不是有效的MIDI设备。"), false);
-            context.getSource().sendFeedback(new LiteralText("§3*你可以键入'/mopp device list'来获取有效的MIDI设备列表。"), false);
+            context.getSource().sendError(new LiteralText("MIDI设备选择失败。不是有效的MIDI设备。"));
             return 1;
         } else if (deviceName.equals(".")) {
-            context.getSource().sendFeedback(new LiteralText("MIDI设备选择成功。现在已选择“Gervill”。"), false);
+            context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", "Gervill")), false);
         } else {
             context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备选择成功。现在已选择“%s”。", deviceName)), false);
         }
@@ -273,17 +272,14 @@ public final class MoppMain implements ModInitializer {
             midiDevice.open();
             midiReceiver = midiDevice.getReceiver();
         } catch (MidiUnavailableException e) {
-            context.getSource().sendFeedback(new LiteralText("§cMIDI设备初始化失败。不是有效的MIDI设备。"), false);
-            context.getSource().sendFeedback(new LiteralText("§3*你可以键入'/mopp device list'来获取有效的MIDI设备列表。"), false);
+            context.getSource().sendError(new LiteralText("MIDI设备选择失败。不是有效的MIDI设备。"));
             return 1;
         }
+
         if (deviceName.equals(".")) {
-            context.getSource().sendFeedback(new LiteralText("MIDI设备初始化成功。现在正使用“Gervill”。"), false);
+            context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", "Gervill")), false);
         } else {
             context.getSource().sendFeedback(new LiteralText(String.format("MIDI设备初始化成功。现在正使用“%s”。", deviceName)), false);
-        }
-        if (midiDevice.getDeviceInfo().getName().equals("Gervill") && soundBank == null) {  // SF2 loaded hint
-            context.getSource().sendFeedback(new LiteralText("§3* 你未加载SF2音色库，但选择了虚拟MIDI设备（不推荐）。"), false);
         }
 
         return 1;
@@ -293,11 +289,11 @@ public final class MoppMain implements ModInitializer {
         String bytesString = getString(context, "bytes");
 
         if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法发送。"), false);
+            context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法发送消息。"));
             return 1;
         }
         if (bytesString.isEmpty()) {
-            context.getSource().sendFeedback(new LiteralText("§c消息不可为空。"), false);
+            context.getSource().sendError(new LiteralText("消息不可为空。"));
             return 1;
         }
 
@@ -316,11 +312,11 @@ public final class MoppMain implements ModInitializer {
         }
 
         if (data.length == 0) {
-            context.getSource().sendFeedback(new LiteralText("§c一般消息至少接受一个参数。"), false);
+            context.getSource().sendError(new LiteralText("一般消息至少接受一个参数。"));
             return 1;
         }
         if (data.length > 4) {
-            context.getSource().sendFeedback(new LiteralText("§c一般消息至多接受四个参数。"), false);
+            context.getSource().sendError(new LiteralText("一般消息至多接受四个参数。"));
             return 1;
         }
         if (data.length == 1) {
@@ -328,11 +324,11 @@ public final class MoppMain implements ModInitializer {
                 short a = mapShortMessageStat(data[0]);
                 midiReceiver.send(new ShortMessage(a), -1);
             } catch (IllegalArgumentException | InvalidMidiDataException e) {
-                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                context.getSource().sendError(new LiteralText("参数不合法。"));
                 return 1;
             }
         } else if (data.length == 2) {
-            context.getSource().sendFeedback(new LiteralText("§c一般消息不可接受两个参数。"), false);
+            context.getSource().sendError(new LiteralText("一般消息不可接受两个参数。"));
             return 1;
         } else if (data.length == 3) {
             try {
@@ -342,7 +338,7 @@ public final class MoppMain implements ModInitializer {
                 midiReceiver.send(new ShortMessage(a, b, c), -1);
             } catch (IllegalArgumentException | InvalidMidiDataException e) {
                 e.printStackTrace();
-                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                context.getSource().sendError(new LiteralText("参数不合法。"));
                 return 1;
             }
         } else {
@@ -353,7 +349,7 @@ public final class MoppMain implements ModInitializer {
                 short d = Short.parseShort(data[3]);
                 midiReceiver.send(new ShortMessage(a, b, c, d), -1);
             } catch (IllegalArgumentException | InvalidMidiDataException e) {
-                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                context.getSource().sendError(new LiteralText("参数不合法。"));
                 return 1;
             }
         }
@@ -371,11 +367,11 @@ public final class MoppMain implements ModInitializer {
         }
 
         if (data.length < 2) {
-            context.getSource().sendFeedback(new LiteralText("§c系统消息至少接受两个参数。"), false);
+            context.getSource().sendError(new LiteralText("系统消息至少接受两个参数。"));
             return 1;
         }
         if (data.length > 3) {
-            context.getSource().sendFeedback(new LiteralText("§c系统消息至多接受三个参数。"), false);
+            context.getSource().sendError(new LiteralText("系统消息至多接受三个参数。"));
             return 1;
         }
 
@@ -385,7 +381,7 @@ public final class MoppMain implements ModInitializer {
                 short b = Short.parseShort(data[1]);
                 midiReceiver.send(new SysexMessage(a, b), -1);
             } catch (IllegalArgumentException | InvalidMidiDataException e) {
-                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                context.getSource().sendError(new LiteralText("参数不合法。"));
                 return 1;
             }
         } else {
@@ -395,7 +391,7 @@ public final class MoppMain implements ModInitializer {
                 short c = Short.parseShort(data[2]);
                 midiReceiver.send(new SysexMessage(a, b, c), -1);
             } catch (IllegalArgumentException | InvalidMidiDataException e) {
-                context.getSource().sendFeedback(new LiteralText("§c参数不合法。"), false);
+                context.getSource().sendError(new LiteralText("参数不合法。"));
                 return 1;
             }
         }
@@ -406,7 +402,7 @@ public final class MoppMain implements ModInitializer {
 
     private int deviceShow(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未选择或初始化MIDI设备，因此无法查看。"), false);
+            context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法查看。"));
             return 1;
         }
 
@@ -420,61 +416,57 @@ public final class MoppMain implements ModInitializer {
         try {
             soundBank = MidiSystem.getSoundbank(new File(getString(context, "path")));
         } catch (IOException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法打开SF2文件。"), false);
+            context.getSource().sendError(new LiteralText("无法打开SF2文件。"));
             return 1;
         } catch (InvalidMidiDataException e) {
-            context.getSource().sendFeedback(new LiteralText("§c无法解析SF2文件。"), false);
+            context.getSource().sendError(new LiteralText("无法解析SF2文件。"));
             return 1;
         }
 
         if (virtualSynth == null) {
-            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            context.getSource().sendError(new LiteralText("没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"));
             return 1;
         }
         virtualSynth.loadAllInstruments(soundBank);
 
         context.getSource().sendFeedback(new LiteralText("SF2音色库加载成功。"), false);
-        if (midiDevice == null || !midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
-            context.getSource().sendFeedback(new LiteralText("§3* 你加载了SF2音色库，但未选择虚拟MIDI设备（不推荐）。"), false);
-        }
 
         return 1;
     }
 
     private int vDevSF2Reload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未加载SF2音色库，因此无法重新加载。"), false);
+            context.getSource().sendError(new LiteralText("尚未加载SF2音色库，因此无法重新加载。"));
             return 1;
         }
 
         if (virtualSynth == null) {
-            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            context.getSource().sendError(new LiteralText("没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"));
             return 1;
         }
         virtualSynth.unloadAllInstruments(soundBank);
         virtualSynth.loadAllInstruments(soundBank);
 
         context.getSource().sendFeedback(new LiteralText("SF2音色库重新加载成功。"), false);
+
         return 1;
     }
 
     private int vDevSF2Unload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
-            context.getSource().sendFeedback(new LiteralText("§c尚未加载SF2音色库，因此无法卸载。"), false);
+            context.getSource().sendError(new LiteralText("尚未加载SF2音色库，因此无法卸载。"));
             return 1;
         }
 
         if (virtualSynth == null) {
-            context.getSource().sendFeedback(new LiteralText("§c没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"), false);
+            context.getSource().sendError(new LiteralText("没有有效的虚拟MIDI设备。请重新安装JRE（或JDK）和本模组。"));
             return 1;
         }
         virtualSynth.unloadAllInstruments(soundBank);
         soundBank = null;
 
         context.getSource().sendFeedback(new LiteralText("SF2音色库卸载成功。"), false);
-        if (midiDevice != null && midiDevice.getDeviceInfo().getName().equals("Gervill")) {  // Internal device hint
-            context.getSource().sendFeedback(new LiteralText("§3* 你卸载了SF2音色库，但选择了虚拟MIDI设备（不推荐）。"), false);
-        }
+
         return 1;
     }
 
