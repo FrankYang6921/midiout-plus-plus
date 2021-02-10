@@ -1,13 +1,14 @@
 package top.frankyang.mopp;
 
 import com.mojang.brigadier.context.CommandContext;
-import net.fabricmc.api.ModInitializer;
+import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.LiteralText;
 
 import javax.sound.midi.*;
+import javax.sound.midi.MidiDevice.Info;
 import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
@@ -15,13 +16,13 @@ import java.util.Objects;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.*;
 
-public final class Main implements ModInitializer {
+public final class Main implements ClientModInitializer {
     private static final int MAJOR_VERSION = 0;
     private static final int MINOR_VERSION = 2;
     private static final int REVISION = 3;
     private static final MidiDevice virtualMidi;
     private static final Synthesizer virtualSynth;
-    private static final MidiDevice.Info virtualInfo;
+    private static final Info virtualInfo;
     private static Sequencer sequencer;
     private static MidiDevice midiDevice;
     private static Receiver midiReceiver;
@@ -59,13 +60,13 @@ public final class Main implements ModInitializer {
         }
     }
 
-    private static String showMidiDeviceInfo(MidiDevice.Info info) {
+    private static String showMidiDeviceInfo(Info info) {
         return String.format(
                 "§e友好名称：§r%s\n§e制造商§r：§9§n%s§r。\n§e设备描述：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription()
         );
     }
 
-    private static MidiDevice getMidiDeviceByInfo(MidiDevice.Info info) {
+    private static MidiDevice getMidiDeviceByInfo(Info info) {
         try {
             return info.equals(virtualInfo) ? virtualMidi : MidiSystem.getMidiDevice(info);
         } catch (Exception e) {
@@ -82,9 +83,9 @@ public final class Main implements ModInitializer {
     }
 
     private static MidiDevice getMidiDeviceByRawName(String name) {
-        MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
+        Info[] info = MidiSystem.getMidiDeviceInfo();
 
-        for (MidiDevice.Info piece : info) {
+        for (Info piece : info) {
             if (!piece.getName().equals(name)) {
                 continue;  // Ignores other MIDI devices.
             }
@@ -93,24 +94,8 @@ public final class Main implements ModInitializer {
         return null;
     }
 
-    @Override
-    public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("about").executes(this::about)));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("play").then(CommandManager.argument("path", string()).executes(this::playerPlay)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("stop").executes(this::playerStop))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("list").executes(this::deviceList))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("panic").executes(this::devicePanic))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(this::deviceReset))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("select").then(CommandManager.argument("name", string()).executes(this::deviceSelect)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("raw").then(CommandManager.argument("bytes", string()).executes(this::deviceRawSend))))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(this::deviceShortSend))))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(this::deviceSysExSend))))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("show").executes(this::deviceShow))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("load").then(CommandManager.argument("path", string()).executes(this::vDevSF2Load)))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("reload").executes(this::vDevSF2Reload))));
-            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("unload").executes(this::vDevSF2Unload))));
-        });
+    public static void sendRawMidiMessage(MidiMessage msg) {
+        Objects.requireNonNull(midiReceiver).send(msg, -1);
     }
 
     private static void sendRawMidiMessage(String bytesString) {
@@ -133,7 +118,7 @@ public final class Main implements ModInitializer {
         return dataString.split("\\s+");
     }
 
-    private int playerPlay(CommandContext<ServerCommandSource> context) {
+    private static int playerPlay(CommandContext<ServerCommandSource> context) {
         if (sequencer != null && sequencer.isRunning()) {
             context.getSource().sendError(new LiteralText("上一个MIDI尚未结束或被停止。"));
             return 1;
@@ -164,7 +149,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int playerStop(CommandContext<ServerCommandSource> context) {
+    private static int playerStop(CommandContext<ServerCommandSource> context) {
         if (sequencer == null || !sequencer.isRunning()) {
             context.getSource().sendError(new LiteralText("上一个MIDI已经结束或被停止。"));
             return 1;
@@ -177,7 +162,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int about(CommandContext<ServerCommandSource> context) {
+    private static int about(CommandContext<ServerCommandSource> context) {
         context.getSource().sendFeedback(new LiteralText(
                 String.format(
                         "§e§lMIDIOut++§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。", MAJOR_VERSION, MINOR_VERSION, REVISION
@@ -187,11 +172,11 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceList(CommandContext<ServerCommandSource> context) {
-        MidiDevice.Info[] info = MidiSystem.getMidiDeviceInfo();
+    private static int deviceList(CommandContext<ServerCommandSource> context) {
+        Info[] info = MidiSystem.getMidiDeviceInfo();
         StringBuilder feedback = new StringBuilder();
 
-        for (MidiDevice.Info piece : info) {
+        for (Info piece : info) {
             feedback.append(showMidiDeviceInfo(piece));
         }
         context.getSource().sendFeedback(new LiteralText(feedback.toString().trim()), false);
@@ -199,7 +184,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int devicePanic(CommandContext<ServerCommandSource> context) {
+    private static int devicePanic(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
             context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法复位。"));
             return 1;
@@ -219,7 +204,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceReset(CommandContext<ServerCommandSource> context) {
+    private static int deviceReset(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
             context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法重置。"));
             return 1;
@@ -240,7 +225,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceSelect(CommandContext<ServerCommandSource> context) {
+    private static int deviceSelect(CommandContext<ServerCommandSource> context) {
         String deviceName = getString(context, "name");
 
         if (midiReceiver != null) {
@@ -285,7 +270,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceRawSend(CommandContext<ServerCommandSource> context) {
+    private static int deviceRawSend(CommandContext<ServerCommandSource> context) {
         String bytesString = getString(context, "bytes");
 
         if (midiDevice == null || midiReceiver == null) {
@@ -303,7 +288,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceShortSend(CommandContext<ServerCommandSource> context) {
+    private static int deviceShortSend(CommandContext<ServerCommandSource> context) {
         String[] data;
         try {
             data = devicePreSendProc(context);
@@ -358,7 +343,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceSysExSend(CommandContext<ServerCommandSource> context) {
+    private static int deviceSysExSend(CommandContext<ServerCommandSource> context) {
         String[] data;
         try {
             data = devicePreSendProc(context);
@@ -400,19 +385,19 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int deviceShow(CommandContext<ServerCommandSource> context) {
+    private static int deviceShow(CommandContext<ServerCommandSource> context) {
         if (midiDevice == null || midiReceiver == null) {
             context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法查看。"));
             return 1;
         }
 
-        MidiDevice.Info piece = midiDevice.getDeviceInfo();
+        Info piece = midiDevice.getDeviceInfo();
         context.getSource().sendFeedback(new LiteralText(showMidiDeviceInfo(piece).trim()), false);
 
         return 1;
     }
 
-    private int vDevSF2Load(CommandContext<ServerCommandSource> context) {
+    private static int vDevSF2Load(CommandContext<ServerCommandSource> context) {
         try {
             soundBank = MidiSystem.getSoundbank(new File(getString(context, "path")));
         } catch (IOException e) {
@@ -434,7 +419,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int vDevSF2Reload(CommandContext<ServerCommandSource> context) {
+    private static int vDevSF2Reload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
             context.getSource().sendError(new LiteralText("尚未加载SF2音色库，因此无法重新加载。"));
             return 1;
@@ -452,7 +437,7 @@ public final class Main implements ModInitializer {
         return 1;
     }
 
-    private int vDevSF2Unload(CommandContext<ServerCommandSource> context) {
+    private static int vDevSF2Unload(CommandContext<ServerCommandSource> context) {
         if (soundBank == null) {
             context.getSource().sendError(new LiteralText("尚未加载SF2音色库，因此无法卸载。"));
             return 1;
@@ -468,6 +453,26 @@ public final class Main implements ModInitializer {
         context.getSource().sendFeedback(new LiteralText("SF2音色库卸载成功。"), false);
 
         return 1;
+    }
+
+    @Override
+    public void onInitializeClient() {
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("about").executes(Main::about)));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("play").then(CommandManager.argument("path", string()).executes(Main::playerPlay)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("player").then(CommandManager.literal("stop").executes(Main::playerStop))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("list").executes(Main::deviceList))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("panic").executes(Main::devicePanic))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("reset").executes(Main::deviceReset))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("select").then(CommandManager.argument("name", string()).executes(Main::deviceSelect)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("raw").then(CommandManager.argument("bytes", string()).executes(Main::deviceRawSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("short").then(CommandManager.argument("data", greedyString()).executes(Main::deviceShortSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("send").then(CommandManager.literal("sysex").then(CommandManager.argument("data", greedyString()).executes(Main::deviceSysExSend))))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("device").then(CommandManager.literal("show").executes(Main::deviceShow))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("load").then(CommandManager.argument("path", string()).executes(Main::vDevSF2Load)))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("reload").executes(Main::vDevSF2Reload))));
+            dispatcher.register(CommandManager.literal("mopp").then(CommandManager.literal("vdev").then(CommandManager.literal("unload").executes(Main::vDevSF2Unload))));
+        });
     }
 
     private static class LooseMessage extends ShortMessage {

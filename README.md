@@ -39,7 +39,7 @@ public class WhatIsThisThingLike {
     + `/mopp device send short <status>`
     + `/mopp device send short <status> <data1> <data2>`
     + `/mopp device send short <status> <channel> <data1> <data2>`
-    + 提示：“<status>”既可以是整数，也可以是字符串。
+    + 提示：“\<status\>”既可以是整数，也可以是字符串。
 + 发送一个系统MIDI消息：
     + `/mopp device send sysex <data> <length>`
     + `/mopp device send sysex <status> <data> <length>`
