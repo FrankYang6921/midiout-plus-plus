@@ -29,7 +29,7 @@ public final class Main implements ClientModInitializer {
     private static Soundbank soundBank;
 
     static {
-        virtualMidi = getMidiDeviceByRawName("Gervill");
+        virtualMidi = getMidiDeviceByName("Gervill");
         virtualSynth = (Synthesizer) Objects.requireNonNull(virtualMidi);
         virtualInfo = Objects.requireNonNull(virtualMidi).getDeviceInfo();
     }
@@ -38,9 +38,9 @@ public final class Main implements ClientModInitializer {
         try {
             return Short.parseShort(data);
         } catch (NumberFormatException e) {
-            Class<ShortMessage> klass = ShortMessage.class;
+            Class<ShortMessage> clazz = ShortMessage.class;
             try {
-                return (short) klass.getField(data).getInt(new ShortMessage());
+                return (short) clazz.getField(data).getInt(new ShortMessage());
             } catch (NoSuchFieldException | IllegalAccessException ignored) {
                 throw new IllegalArgumentException();  // Neither a number nor parsed
             }
@@ -51,18 +51,18 @@ public final class Main implements ClientModInitializer {
         try {
             return Short.parseShort(data);
         } catch (NumberFormatException e) {
-            Class<SysexMessage> klass = SysexMessage.class;
+            Class<SysexMessage> clazz = SysexMessage.class;
             try {
-                return (short) klass.getField(data).getInt(new SysexMessage());
+                return (short) clazz.getField(data).getInt(new SysexMessage());
             } catch (NoSuchFieldException | IllegalAccessException ignored) {
                 throw new IllegalArgumentException();  // Neither a number nor parsed
             }
         }
     }
 
-    private static String showMidiDeviceInfo(Info info) {
+    private static String getMidiDeviceInfoString(Info info) {
         return String.format(
-                "§e友好名称：§r%s\n§e制造商§r：§9§n%s§r。\n§e设备描述：§r%s。\n\n", info.getName(), info.getVendor(), info.getDescription()
+                "友好名称：%s；\n设备描述：%s；\n制造商：%s；版本号：%s。\n\n", info.getName(), info.getVendor(), info.getDescription(), info.getVersion()
         );
     }
 
@@ -76,13 +76,13 @@ public final class Main implements ClientModInitializer {
 
     private static MidiDevice getMidiDeviceByName(String name) {
         try {
-            return name.equals("Gervill") ? virtualMidi : getMidiDeviceByRawName(name);
+            return name.equals("Gervill") ? virtualMidi : getRawMidiDeviceByName(name);
         } catch (Exception e) {
             return null;
         }
     }
 
-    private static MidiDevice getMidiDeviceByRawName(String name) {
+    private static MidiDevice getRawMidiDeviceByName(String name) {
         Info[] info = MidiSystem.getMidiDeviceInfo();
 
         for (Info piece : info) {
@@ -94,13 +94,15 @@ public final class Main implements ClientModInitializer {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public static void sendRawMidiMessage(MidiMessage msg) {
         Objects.requireNonNull(midiReceiver).send(msg, -1);
     }
 
     private static void sendRawMidiMessage(String bytesString) {
-        byte[] data = Base64.getDecoder().decode(bytesString);
-        midiReceiver.send(new LooseMessage(data), -1);
+        sendRawMidiMessage(new LooseMessage(
+                Base64.getDecoder().decode(bytesString)  // Accepts BASE64
+        ));
     }
 
     private static String[] devicePreSendProc(CommandContext<ServerCommandSource> context) throws IllegalArgumentException {
@@ -110,8 +112,8 @@ public final class Main implements ClientModInitializer {
             context.getSource().sendError(new LiteralText("尚未选择或初始化MIDI设备，因此无法发送消息。"));
             throw new IllegalArgumentException();
         }
-        if (dataString.isEmpty()) {
-            context.getSource().sendError(new LiteralText("消息不可为空。"));
+        if (dataString.trim().isEmpty()) {
+            context.getSource().sendError(new LiteralText("消息（BASE64）不可为空，且不可仅包含空白字符。"));
             throw new IllegalArgumentException();
         }
 
@@ -165,10 +167,9 @@ public final class Main implements ClientModInitializer {
     private static int about(CommandContext<ServerCommandSource> context) {
         context.getSource().sendFeedback(new LiteralText(
                 String.format(
-                        "§e§lMIDIOut++§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。", MAJOR_VERSION, MINOR_VERSION, REVISION
+                        "§e§lMIDIOut Plus Plus§r v%d.%d.%d 是§9§nkworker§r制作的的自由软件。遵循GPLv3协议。", MAJOR_VERSION, MINOR_VERSION, REVISION
                 )
         ), false);
-
         return 1;
     }
 
@@ -177,7 +178,7 @@ public final class Main implements ClientModInitializer {
         StringBuilder feedback = new StringBuilder();
 
         for (Info piece : info) {
-            feedback.append(showMidiDeviceInfo(piece));
+            feedback.append(getMidiDeviceInfoString(piece));
         }
         context.getSource().sendFeedback(new LiteralText(feedback.toString().trim()), false);
 
@@ -392,7 +393,7 @@ public final class Main implements ClientModInitializer {
         }
 
         Info piece = midiDevice.getDeviceInfo();
-        context.getSource().sendFeedback(new LiteralText(showMidiDeviceInfo(piece).trim()), false);
+        context.getSource().sendFeedback(new LiteralText(getMidiDeviceInfoString(piece).trim()), false);
 
         return 1;
     }
@@ -477,7 +478,7 @@ public final class Main implements ClientModInitializer {
 
     private static class LooseMessage extends ShortMessage {
         public LooseMessage(byte[] data) {
-            super(data);  // Switched from protected to public.
+            super(data);  // Changed from protected to public.
         }
     }
 }
